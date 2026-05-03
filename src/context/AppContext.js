@@ -13,34 +13,55 @@ export const AppProvider = ({ children }) => {
 
   // Load favorites from Firestore whenever the logged-in user changes
   useEffect(() => {
-    // write your code here!
+    if(!currentUser){
+      setFavorites([]); 
+      return; 
     }
 
-    // create your function here!
 
+    // create your function here!
+    async function loadFavorites(){
+      const snap = await getDoc(doc(db,'favorites',currentUser.id)); 
+      if (snap.exists())
+      {
+        setFavorites(snap.data().items || []); 
+      } else {
+        setFavorites([]);
+      }
+    } 
     loadFavorites();
   }, [currentUser]);
 
   
   // create your function here as well! (Reference slides for help)
+  const saveFavoritesToFirestore = useCallback(async (updatedFavorites) => {
+    if(!currentUser) return; 
+    await setDoc(doc(db,'favorites',currentUser.uid),{
+      items:  updatedFavorites,
+    });
+  }, [currentUser]); 
+
 
   const toggleFavorite = (food) => {
     // Must be logged in to save favorites
     if (!currentUser) {
-      addToast('🔒 Log in to save favorites!');
+      addToast('Log in to save favorites!');
       return;
     }
 
     
     setFavorites((prev) => {
-      // Write your code here!
+      const exists = prev.some((f) => f.id === food.id || f.name === food.name);
+      let updated; 
       if (exists) {
-      // here as well!
+        updated = prev.filter((f) => f.name !== food.name); 
+        addToast(`Removed ${food.name} from Favorites`); 
       } else {
-        // and here too
-        addToast(`❤️ Added ${food.name} to Favorites!`);
+        updated = [...prev,food]; 
+        addToast(` Added ${food.name} to Favorites!`);
       }
-      // write your code here as well!
+      saveFavoritesToFirestore(updated);
+      return updated; 
     }); 
   };
 
@@ -49,7 +70,7 @@ export const AppProvider = ({ children }) => {
 
   const addToCart = (food) => {
     setCart((prev) => [...prev, food]);
-    addToast(`🛒 Added ${food.name} to Cart`);
+    addToast(` Added ${food.name} to Cart`);
   };
 
   const removeFromCart = (index) => {
